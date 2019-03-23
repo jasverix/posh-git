@@ -167,7 +167,8 @@ $exportModuleMemberParams = @{
         'Write-Prompt',
         'Write-VcsStatus',
         'TabExpansion',
-        'tgit'
+        'tgit',
+        'git'
     )
     Variable = @(
         'GitPromptScriptBlock'

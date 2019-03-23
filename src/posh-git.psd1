@@ -44,7 +44,8 @@ FunctionsToExport = @(
     'Write-Prompt',
     'Write-VcsStatus',
     'TabExpansion',
-    'tgit'
+    'tgit',
+    'git'
 )
 
 # Cmdlets to export from this module

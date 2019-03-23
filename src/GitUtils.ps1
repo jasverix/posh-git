@@ -579,3 +579,11 @@ function Update-AllBranches($Upstream = 'master', [switch]$Quiet) {
 
     git checkout -q $head
 }
+
+function git {
+	git.exe $args
+
+	if($LastExitCode -ne 0) {
+		Throw "git.exe failed with an error ($LastExitCode)"
+	}
+}
