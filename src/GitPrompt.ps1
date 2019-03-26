@@ -226,6 +226,8 @@ function Write-GitStatus {
         $sb | Write-Prompt $s.PathStatusSeparator.Expand() > $null
     }
 
+    $sb.Append('> ')
+
     if ($sb.Length -gt 0) {
         $sb.ToString()
     }
