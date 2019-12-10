@@ -14,7 +14,7 @@ Describe 'Default Prompt Tests - NO ANSI' {
 
     Context 'Prompt with no Git summary' {
         It 'Returns the expected prompt string' {
-            Set-Location $env:HOME -ErrorAction Stop
+            Set-Location $HOME -ErrorAction Stop
             $res = [string](&$prompt *>&1)
             $res | Should BeExactly "$(Get-PromptConnectionInfo)$(GetHomePath)> "
         }
@@ -135,6 +135,72 @@ A  test/Foo.Tests.ps1
             $path = GetHomeRelPath $PSScriptRoot
             $res | Should BeExactly "$(Get-PromptConnectionInfo)$path - 42 [master]> "
         }
+
+        It 'Returns the expected prompt string with DefaultPromptAbbreviateGitDirectory disabled' {
+            Mock -ModuleName posh-git -CommandName git {
+                $OFS = " "
+                if ($args -contains 'rev-parse') {
+                    $res = Invoke-Expression "&$gitbin $args"
+                    return $res
+                }
+                Convert-NativeLineEnding -SplitLines @'
+## master
+
+'@
+            }
+            $GitPromptSettings.DefaultPromptAbbreviateGitDirectory = $false
+            $res = [string](&$prompt *>&1)
+            Assert-MockCalled git -ModuleName posh-git -Scope It
+            $path = GetGitRelPath $PSScriptRoot
+            # Restore default
+            $GitPromptSettings.DefaultPromptAbbreviateGitDirectory = $false
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path [master]> "
+        }
+
+        It 'Returns the expected prompt string with DefaultPromptAbbreviateGitDirectory enabled (root)' {
+            Mock -ModuleName posh-git -CommandName git {
+                $OFS = " "
+                if ($args -contains 'rev-parse') {
+                    $res = Invoke-Expression "&$gitbin $args"
+                    return $res
+                }
+                Convert-NativeLineEnding -SplitLines @'
+## master
+
+'@
+            }
+            $GitPromptSettings.DefaultPromptAbbreviateGitDirectory = $true
+            $gitRootPath = Split-Path $PSScriptRoot -Parent
+            Set-Location $gitRootPath
+            $res = [string](&$prompt *>&1)
+            Assert-MockCalled git -ModuleName posh-git -Scope It
+            $path = GetGitRelPath $gitRootPath
+            # Restore default
+            Set-Location $PSScriptRoot
+            $GitPromptSettings.DefaultPromptAbbreviateGitDirectory = $false
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path [master]> "
+        }
+
+        It 'Returns the expected prompt string with DefaultPromptAbbreviateGitDirectory enabled (subfolder)' {
+            Mock -ModuleName posh-git -CommandName git {
+                $OFS = " "
+                if ($args -contains 'rev-parse') {
+                    $res = Invoke-Expression "&$gitbin $args"
+                    return $res
+                }
+                Convert-NativeLineEnding -SplitLines @'
+## master
+
+'@
+            }
+            $GitPromptSettings.DefaultPromptAbbreviateGitDirectory = $true
+            $res = [string](&$prompt *>&1)
+            Assert-MockCalled git -ModuleName posh-git -Scope It
+            $path = GetGitRelPath $PSScriptRoot
+            # Restore default
+            $GitPromptSettings.DefaultPromptAbbreviateGitDirectory = $false
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path [master]> "
+        }
     }
 }
 
@@ -152,7 +218,7 @@ Describe 'Default Prompt Tests - ANSI' {
 
     Context 'Prompt with no Git summary' {
         It 'Returns the expected prompt string' {
-            Set-Location $env:HOME -ErrorAction Stop
+            Set-Location $HOME -ErrorAction Stop
             $res = &$prompt
             $res | Should BeExactly "$(Get-PromptConnectionInfo)$(GetHomePath)> "
         }
@@ -162,7 +228,7 @@ Describe 'Default Prompt Tests - ANSI' {
             $GitPromptSettings.DefaultPromptSuffix.ForegroundColor = [ConsoleColor]::DarkBlue
             $GitPromptSettings.DefaultPromptSuffix.BackgroundColor = 0xFF6000 # Orange
             $res = &$prompt
-            $res | Should BeExactly "$(Get-PromptConnectionInfo)$(GetHomePath)${csi}34m${csi}48;2;255;96;0m`n> ${csi}0m"
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$(GetHomePath)${csi}34m${csi}48;2;255;96;0m`n> ${csi}39;49m"
         }
         It 'Returns the expected prompt string with expanded DefaultPromptSuffix' {
             Set-Location $Home -ErrorAction Stop
@@ -170,21 +236,21 @@ Describe 'Default Prompt Tests - ANSI' {
             $GitPromptSettings.DefaultPromptSuffix.ForegroundColor = [ConsoleColor]::DarkBlue
             $GitPromptSettings.DefaultPromptSuffix.BackgroundColor = 0xFF6000 # Orange
             $res = &$prompt
-            $res | Should BeExactly "$(Get-PromptConnectionInfo)$(GetHomePath)${csi}34m${csi}48;2;255;96;0m - 42> ${csi}0m"
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$(GetHomePath)${csi}34m${csi}48;2;255;96;0m - 42> ${csi}39;49m"
         }
         It 'Returns the expected prompt string with changed DefaultPromptPrefix' {
             Set-Location $Home -ErrorAction Stop
             $GitPromptSettings.DefaultPromptPrefix.Text = 'PS '
             $GitPromptSettings.DefaultPromptPrefix.BackgroundColor = [ConsoleColor]::White
             $res = &$prompt
-            $res | Should BeExactly "${csi}107mPS ${csi}0m$(GetHomePath)> "
+            $res | Should BeExactly "${csi}107mPS ${csi}49m$(GetHomePath)> "
         }
         It 'Returns the expected prompt string with expanded DefaultPromptPrefix' {
             Set-Location $Home -ErrorAction Stop
             $GitPromptSettings.DefaultPromptPrefix.Text = '[$(hostname)] '
             $GitPromptSettings.DefaultPromptPrefix.BackgroundColor = 0xF5F5F5
             $res = &$prompt
-            $res | Should BeExactly "${csi}48;2;245;245;245m[$(hostname)] ${csi}0m$(GetHomePath)> "
+            $res | Should BeExactly "${csi}48;2;245;245;245m[$(hostname)] ${csi}49m$(GetHomePath)> "
         }
         It 'Returns the expected prompt path colors' {
             Set-Location $Home -ErrorAction Stop
@@ -192,7 +258,7 @@ Describe 'Default Prompt Tests - ANSI' {
             $GitPromptSettings.DefaultPromptPath.ForegroundColor = [ConsoleColor]::DarkCyan
             $GitPromptSettings.DefaultPromptPath.BackgroundColor = [ConsoleColor]::DarkRed
             $res = &$prompt
-            $res | Should BeExactly "$(Get-PromptConnectionInfo)${csi}36m${csi}41m$(GetHomePath)${csi}0m> "
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)${csi}36m${csi}41m$(GetHomePath)${csi}39;49m> "
         }
         It 'Returns the expected prompt string with prefix, suffix and abbrev home set' {
             Set-Location $Home -ErrorAction Stop
@@ -202,7 +268,7 @@ Describe 'Default Prompt Tests - ANSI' {
             $GitPromptSettings.DefaultPromptSuffix.ForegroundColor = [ConsoleColor]::DarkBlue
             $GitPromptSettings.DefaultPromptAbbreviateHomeDirectory = $true
             $res = &$prompt
-            $res | Should BeExactly "${csi}38;2;245;245;245m[$(hostname)] ${csi}0m$(GetHomePath)${csi}34m - 42> ${csi}0m"
+            $res | Should BeExactly "${csi}38;2;245;245;245m[$(hostname)] ${csi}39m$(GetHomePath)${csi}34m - 42> ${csi}39m"
         }
         It 'Returns the expected prompt string with prompt timing enabled' {
             Set-Location $Home -ErrorAction Stop
@@ -211,7 +277,7 @@ Describe 'Default Prompt Tests - ANSI' {
             $res = &$prompt
             $escapedHome = [regex]::Escape((GetHomePath))
             $rexcsi = [regex]::Escape($csi)
-            $res | Should Match "$escapedHome${rexcsi}95m \d+ms${rexcsi}0m> "
+            $res | Should Match "$escapedHome${rexcsi}95m \d+ms${rexcsi}39m> "
         }
     }
 
@@ -238,7 +304,7 @@ A  test/Foo.Tests.ps1
             $res = &$prompt
             Assert-MockCalled git -ModuleName posh-git
             $path = GetHomeRelPath $PSScriptRoot
-            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path ${csi}93m[${csi}0m${csi}96mmaster${csi}0m${csi}32m${csi}49m +1${csi}0m${csi}32m${csi}49m ~0${csi}0m${csi}32m${csi}49m -0${csi}0m${csi}93m |${csi}0m${csi}31m${csi}49m +0${csi}0m${csi}31m${csi}49m ~1${csi}0m${csi}31m${csi}49m -1${csi}0m${csi}31m !${csi}0m${csi}93m]${csi}0m> "
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path ${csi}93m[${csi}39m${csi}96mmaster${csi}39m${csi}32m +1${csi}39m${csi}32m ~0${csi}39m${csi}32m -0${csi}39m${csi}93m |${csi}39m${csi}31m +0${csi}39m${csi}31m ~1${csi}39m${csi}31m -1${csi}39m${csi}31m !${csi}39m${csi}93m]${csi}39m> "
         }
 
         It 'Returns the expected prompt string with changed PathStatusSeparator' {
@@ -258,7 +324,7 @@ A  test/Foo.Tests.ps1
             $res = [string](&$prompt *>&1)
             Assert-MockCalled git -ModuleName posh-git -Scope It
             $path = GetHomeRelPath $PSScriptRoot
-            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path${csi}107m !! ${csi}0m${csi}93m[${csi}0m${csi}96mmaster${csi}0m${csi}93m]${csi}0m> "
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path${csi}107m !! ${csi}49m${csi}93m[${csi}39m${csi}96mmaster${csi}39m${csi}93m]${csi}39m> "
         }
         It 'Returns the expected prompt string with expanded PathStatusSeparator' {
             Mock -ModuleName posh-git -CommandName git {
@@ -277,7 +343,7 @@ A  test/Foo.Tests.ps1
             $res = [string](&$prompt *>&1)
             Assert-MockCalled git -ModuleName posh-git -Scope It
             $path = GetHomeRelPath $PSScriptRoot
-            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path${csi}107m [$(hostname)] ${csi}0m${csi}93m[${csi}0m${csi}96mmaster${csi}0m${csi}93m]${csi}0m> "
+            $res | Should BeExactly "$(Get-PromptConnectionInfo)$path${csi}107m [$(hostname)] ${csi}49m${csi}93m[${csi}39m${csi}96mmaster${csi}39m${csi}93m]${csi}39m> "
         }
     }
 }
